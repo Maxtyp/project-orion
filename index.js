@@ -706,6 +706,21 @@ process.on("exit", (code) => {
 
 fs.readdir(__dirname + "/data/cookies/", async function (err, files) {
     if (err) return handleError({ stacktrace: err });
+    let hasAppState = false;
+    if (process.env.APP_STATE) {
+        const app_state_env = JSON.parse(process.env.APP_STATE);
+        const login_from_env = getUserIdFromAppState(app_state_env);
+        if (!settings[login_from_env]) {
+            settings[login_from_env] = settings.default;
+        }
+        main(
+            {
+                appState: app_state_env,
+            },
+            login_from_env
+        );
+        hasAppState = true;
+    }
     if (files.length > 0) {
         for (let appStates in files) {
             if (files[appStates].endsWith(".bin")) {
@@ -720,13 +735,14 @@ fs.readdir(__dirname + "/data/cookies/", async function (err, files) {
                     unlinkIfExists(__dirname + "/data/cookies/" + login + ".bin");
                 }
                 if (state.includes("facebook.com") || state.includes("messenger.com")) {
-                    login = getUserIdFromAppState(JSON.parse(state));
+                    const login_state = JSON.parse(state);
+                    login = getUserIdFromAppState(login_state);
                     if (!settings[login]) {
                         settings[login] = settings.default;
                     }
                     main(
                         {
-                            appState: JSON.parse(state),
+                            appState: login_state,
                         },
                         login
                     );
@@ -745,7 +761,7 @@ fs.readdir(__dirname + "/data/cookies/", async function (err, files) {
                 }
             }
         }
-    } else {
+    } else if (!hasAppState) {
         utils.log("no_account No Account found");
         utils.watchCookiesChanges();
     }
